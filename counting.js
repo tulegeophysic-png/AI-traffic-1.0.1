@@ -51,8 +51,8 @@ function drawSideDivider() {
     ctx.lineWidth = 5;
     ctx.strokeStyle = '#22c55e';
     ctx.beginPath();
-    ctx.moveTo(dividerX, 0);
-    ctx.lineTo(dividerX, canvas.height);
+    ctx.moveTo(startX, startY);
+    ctx.lineTo(endX, endY);
     ctx.stroke();
     ctx.setLineDash([]);
     ctx.font = 'bold 13px Segoe UI';
@@ -60,7 +60,7 @@ function drawSideDivider() {
     ctx.fillStyle = 'rgba(17, 24, 39, 0.9)';
     ctx.fillRect(8, 7, 54, 22);
     ctx.fillRect(rightLabelX - 5, 7, 58, 22);
-    ctx.fillStyle = '#facc15';
+    ctx.fillStyle = '#22c55e';
     ctx.fillText('TRÁI', 14, 23);
     ctx.fillText('PHẢI', rightLabelX, 23);
     ctx.fillStyle = '#22c55e';
