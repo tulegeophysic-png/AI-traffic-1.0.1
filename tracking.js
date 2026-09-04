@@ -1,0 +1,103 @@
+import { calculateIoU } from './detection.js';
+import { canvas, lineConfig, recentVehicles, countsLeft, countsRight, countsTotal, getCountingLineEnabled } from './main.js';
+
+let uniqueIdCounter = 1;
+
+export function resetTracking() {
+    recentVehicles.clear();
+    uniqueIdCounter = 1;
+}
+
+export function matchAndCountVehicles(detections) {
+    const activeVehicles = [];
+    const directionMode = document.getElementById('counting-direction').value;
+    const lineY = lineConfig.positionRatio * canvas.height;
+    const nowTime = Date.now();
+
+    for (const [id, value] of recentVehicles.entries()) {
+        if (nowTime - value.time > 8000) recentVehicles.delete(id);
+    }
+
+    const orderedDetections = [...detections].sort((first, second) => second.confidence - first.confidence);
+    const candidateMatches = [];
+    const baseMatchDistance = Math.max(220, Math.min(canvas.width, canvas.height) * 0.20);
+
+    orderedDetections.forEach((detection, detectionIndex) => {
+        const [x, y, width, height] = detection.bbox;
+        const centerX = x + width / 2;
+        const centerY = y + height / 2;
+        for (const [id, value] of recentVehicles.entries()) {
+            if (value.className === detection.className) {
+                const elapsedSeconds = Math.min((nowTime - value.time) / 1000, 1);
+                const predictedX = value.cx + (value.vx || 0) * elapsedSeconds;
+                const predictedY = value.cy + (value.vy || 0) * elapsedSeconds;
+                const distance = Math.hypot(centerX - predictedX, centerY - predictedY);
+                const overlap = value.bbox ? calculateIoU(detection.bbox, value.bbox) : 0;
+                const speedAllowance = Math.hypot(value.vx || 0, value.vy || 0) * elapsedSeconds;
+                const maxMatchDistance = Math.max(baseMatchDistance, speedAllowance + 120);
+                if (overlap >= 0.05 || distance <= maxMatchDistance) {
+                    candidateMatches.push({ detectionIndex, id, score: overlap * 1000 - distance });
+                }
+            }
+        }
+    });
+
+    candidateMatches.sort((first, second) => second.score - first.score);
+    const assignedIds = new Map();
+    const usedIds = new Set();
+    const usedDetections = new Set();
+    candidateMatches.forEach(match => {
+        if (!usedIds.has(match.id) && !usedDetections.has(match.detectionIndex)) {
+            assignedIds.set(match.detectionIndex, match.id);
+            usedIds.add(match.id);
+            usedDetections.add(match.detectionIndex);
+        }
+    });
+
+    orderedDetections.forEach((detection, detectionIndex) => {
+        const [x, y, width, height] = detection.bbox;
+        const centerX = x + width / 2;
+        const centerY = y + height / 2;
+        let assignedId = assignedIds.get(detectionIndex);
+        if (!assignedId) assignedId = uniqueIdCounter++;
+
+        const oldData = recentVehicles.get(assignedId);
+        if (oldData && getCountingLineEnabled() && !oldData.counted) {
+            let crossed = false;
+            if (directionMode === 'both') {
+                if ((oldData.cy < lineY && centerY >= lineY) || (oldData.cy > lineY && centerY <= lineY)) crossed = true;
+            } else if (directionMode === 'down') {
+                if (oldData.cy < lineY && centerY >= lineY) crossed = true;
+            } else if (directionMode === 'up') {
+                if (oldData.cy > lineY && centerY <= lineY) crossed = true;
+            }
+
+            if (crossed) {
+                oldData.counted = true;
+                const isLeftSide = centerX < canvas.width / 2;
+                const sideCounts = isLeftSide ? countsLeft : countsRight;
+                sideCounts[detection.className]++;
+                sideCounts.total++;
+                countsTotal[detection.className]++;
+                countsTotal.total++;
+            }
+        }
+
+        const elapsedSeconds = oldData ? Math.max((nowTime - oldData.time) / 1000, 0.001) : 0;
+        const velocityX = oldData ? (centerX - oldData.cx) / elapsedSeconds : 0;
+        const velocityY = oldData ? (centerY - oldData.cy) / elapsedSeconds : 0;
+        recentVehicles.set(assignedId, {
+            cx: centerX,
+            cy: centerY,
+            bbox: detection.bbox,
+            className: detection.className,
+            counted: oldData ? oldData.counted : false,
+            time: nowTime,
+            vx: Math.max(-1000, Math.min(1000, velocityX)),
+            vy: Math.max(-1000, Math.min(1000, velocityY))
+        });
+        activeVehicles.push({ id: assignedId, bbox: [x, y, width, height], className: detection.className, confidence: detection.confidence });
+    });
+
+    return activeVehicles;
+}
