@@ -70,8 +70,8 @@ export function matchAndCountVehicles(detections) {
             const currentBottom = centerY + height / 2;
             const movedDown = centerY > oldData.cy;
             const movedUp = centerY < oldData.cy;
-            const crossedDown = oldData.cy < lineY && centerY >= lineY;
-            const crossedUp = oldData.cy > lineY && centerY <= lineY;
+            const crossedDown = (oldData.cy < lineY || oldData.wasAboveLine) && centerY >= lineY;
+            const crossedUp = (oldData.cy > lineY || oldData.wasBelowLine) && centerY <= lineY;
             const sweptDown = previousBottom < lineY && currentBottom >= lineY;
             const sweptUp = previousTop > lineY && currentTop <= lineY;
             let crossed = false;
@@ -106,6 +106,8 @@ export function matchAndCountVehicles(detections) {
             height,
             className: detection.className,
             counted: oldData ? oldData.counted : false,
+            wasAboveLine: oldData ? (oldData.wasAboveLine || centerY < lineY) : centerY < lineY,
+            wasBelowLine: oldData ? (oldData.wasBelowLine || centerY > lineY) : centerY > lineY,
             time: nowTime,
             vx: Math.max(-1000, Math.min(1000, velocityX)),
             vy: Math.max(-1000, Math.min(1000, velocityY))
