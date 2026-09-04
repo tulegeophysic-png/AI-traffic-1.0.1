@@ -1,6 +1,8 @@
 import { canvas, ctx, lineConfig, latestDetections, getCountingLineEnabled, getDraggingLine } from './main.js';
 
 export function drawScene(vehicles) {
+    drawSideDivider();
+
     if (getCountingLineEnabled()) {
         const lineY = lineConfig.positionRatio * canvas.height;
         ctx.strokeStyle = getDraggingLine() ? '#38bdf8' : '#ef4444';
@@ -30,6 +32,24 @@ export function drawScene(vehicles) {
             ctx.fillText(`${vehicle.className.toUpperCase()} #${vehicle.id} (${(vehicle.confidence * 100).toFixed(0)}%)`, x + 2, y > 18 ? y - 5 : 12);
         });
     }
+}
+
+function drawSideDivider() {
+    const dividerX = canvas.width / 2;
+    ctx.save();
+    ctx.strokeStyle = '#facc15';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([10, 8]);
+    ctx.beginPath();
+    ctx.moveTo(dividerX, 0);
+    ctx.lineTo(dividerX, canvas.height);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#facc15';
+    ctx.font = 'bold 12px Segoe UI';
+    ctx.fillText('TRÁI', 12, 20);
+    ctx.fillText('PHẢI', Math.max(12, dividerX + 12), 20);
+    ctx.restore();
 }
 
 export function resetLinePosition() {
