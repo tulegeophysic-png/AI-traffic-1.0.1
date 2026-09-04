@@ -63,13 +63,25 @@ export function matchAndCountVehicles(detections) {
 
         const oldData = recentVehicles.get(assignedId);
         if (oldData && getCountingLineEnabled() && !oldData.counted) {
+            const previousHeight = oldData.height || oldData.bbox[3];
+            const previousTop = oldData.cy - previousHeight / 2;
+            const previousBottom = oldData.cy + previousHeight / 2;
+            const currentTop = centerY - height / 2;
+            const currentBottom = centerY + height / 2;
+            const movedDown = centerY > oldData.cy;
+            const movedUp = centerY < oldData.cy;
+            const crossedDown = oldData.cy < lineY && centerY >= lineY;
+            const crossedUp = oldData.cy > lineY && centerY <= lineY;
+            const sweptDown = previousBottom < lineY && currentBottom >= lineY;
+            const sweptUp = previousTop > lineY && currentTop <= lineY;
             let crossed = false;
+
             if (directionMode === 'both') {
-                if ((oldData.cy < lineY && centerY >= lineY) || (oldData.cy > lineY && centerY <= lineY)) crossed = true;
+                crossed = (movedDown && (crossedDown || sweptDown)) || (movedUp && (crossedUp || sweptUp));
             } else if (directionMode === 'down') {
-                if (oldData.cy < lineY && centerY >= lineY) crossed = true;
+                crossed = movedDown && (crossedDown || sweptDown);
             } else if (directionMode === 'up') {
-                if (oldData.cy > lineY && centerY <= lineY) crossed = true;
+                crossed = movedUp && (crossedUp || sweptUp);
             }
 
             if (crossed) {
@@ -90,6 +102,8 @@ export function matchAndCountVehicles(detections) {
             cx: centerX,
             cy: centerY,
             bbox: detection.bbox,
+            width,
+            height,
             className: detection.className,
             counted: oldData ? oldData.counted : false,
             time: nowTime,
