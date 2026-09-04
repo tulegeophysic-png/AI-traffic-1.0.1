@@ -86,7 +86,7 @@ export function matchAndCountVehicles(detections) {
 
             if (crossed) {
                 oldData.counted = true;
-                const isLeftSide = centerX < canvas.width / 2;
+                const isLeftSide = oldData.leftSideVotes >= oldData.rightSideVotes;
                 const sideCounts = isLeftSide ? countsLeft : countsRight;
                 sideCounts[detection.className]++;
                 sideCounts.total++;
@@ -98,6 +98,8 @@ export function matchAndCountVehicles(detections) {
         const elapsedSeconds = oldData ? Math.max((nowTime - oldData.time) / 1000, 0.001) : 0;
         const velocityX = oldData ? (centerX - oldData.cx) / elapsedSeconds : 0;
         const velocityY = oldData ? (centerY - oldData.cy) / elapsedSeconds : 0;
+        const leftSideVotes = (oldData?.leftSideVotes || 0) + (centerX < canvas.width / 2 ? 1 : 0);
+        const rightSideVotes = (oldData?.rightSideVotes || 0) + (centerX >= canvas.width / 2 ? 1 : 0);
         recentVehicles.set(assignedId, {
             cx: centerX,
             cy: centerY,
@@ -106,6 +108,8 @@ export function matchAndCountVehicles(detections) {
             height,
             className: detection.className,
             counted: oldData ? oldData.counted : false,
+            leftSideVotes,
+            rightSideVotes,
             wasAboveLine: oldData ? (oldData.wasAboveLine || centerY < lineY) : centerY < lineY,
             wasBelowLine: oldData ? (oldData.wasBelowLine || centerY > lineY) : centerY > lineY,
             time: nowTime,
