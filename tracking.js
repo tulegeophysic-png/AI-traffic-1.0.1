@@ -1,5 +1,5 @@
 import { calculateIoU } from './detection.js';
-import { canvas, lineConfig, recentVehicles, countsLeft, countsRight, countsTotal, getCountingLineEnabled } from './main.js';
+import { canvas, lineConfig, recentVehicles, countsLeft, countsRight, countsTotal, getCountingLineEnabled, isLeftOfDivider } from './main.js';
 
 let uniqueIdCounter = 1;
 
@@ -98,9 +98,10 @@ export function matchAndCountVehicles(detections) {
         const elapsedSeconds = oldData ? Math.max((nowTime - oldData.time) / 1000, 0.001) : 0;
         const velocityX = oldData ? (centerX - oldData.cx) / elapsedSeconds : 0;
         const velocityY = oldData ? (centerY - oldData.cy) / elapsedSeconds : 0;
-        const leftSideVotes = oldData?.leftSideVotes || (centerX < canvas.width / 2 ? 1 : 0);
-        const rightSideVotes = oldData?.rightSideVotes || (centerX >= canvas.width / 2 ? 1 : 0);
-        const side = oldData?.side || (centerX < canvas.width / 2 ? 'left' : 'right');
+        const isLeftOfLaneDivider = isLeftOfDivider(centerX, centerY);
+        const leftSideVotes = oldData?.leftSideVotes || (isLeftOfLaneDivider ? 1 : 0);
+        const rightSideVotes = oldData?.rightSideVotes || (isLeftOfLaneDivider ? 0 : 1);
+        const side = oldData?.side || (isLeftOfLaneDivider ? 'left' : 'right');
         recentVehicles.set(assignedId, {
             cx: centerX,
             cy: centerY,
